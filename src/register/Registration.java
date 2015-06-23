@@ -3,6 +3,7 @@ package register;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.interfaces.RSAPublicKey;
 
 /**
  * Created by roya on 6/20/15.
@@ -10,8 +11,9 @@ import java.net.Socket;
 public class Registration extends Thread{
 
     private ServerSocket registaration;
-    private DataInputStream inputStream;
-    private DataOutputStream outputStream;
+    private ObjectInputStream inputStream;
+    private ObjectOutputStream outputStream;
+    private RSAPublicKey pollingPubKey;
 
     @Override
     public void start() {
@@ -19,19 +21,31 @@ public class Registration extends Thread{
             registaration = new ServerSocket(3333);
             while(true) {
                 Socket voter = registaration.accept();
-                inputStream = new DataInputStream(voter.getInputStream());
-                outputStream = new DataOutputStream(voter.getOutputStream());
                 System.out.println("voter " + voter.toString() + " connected");
-                System.out.println(inputStream.readUTF());
-                for (int i = 0; i < 10; i++) {
-                    outputStream.writeUTF("hello voter!");
-                }
-                ObjectOutputStream oos = new ObjectOutputStream(voter.getOutputStream());
-                oos.write(12);
+                outputStream = new ObjectOutputStream(voter.getOutputStream());
+                inputStream = new ObjectInputStream(voter.getInputStream());
+                System.out.println((String)inputStream.readObject());
+                readPollingPubKey();
+//                for (int i = 0; i < 10; i++) {
+//                    outputStream.writeObject("hello voter!");
+//                }
 //                voter.close();
+                outputStream.writeObject(pollingPubKey);
             }
         } catch (IOException e) {
             e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void readPollingPubKey() throws ClassNotFoundException {
+        try {
+            ObjectInputStream ois = new ObjectInputStream(new FileInputStream("pollingCenterPublicKey"));
+            pollingPubKey = (RSAPublicKey)ois.readObject();
+        } catch (IOException ignored) {
+            System.out.println("no such file found");
+            ignored.printStackTrace();
         }
     }
 

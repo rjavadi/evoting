@@ -1,8 +1,6 @@
 package voter;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.Socket;
 import java.util.Scanner;
 
@@ -11,17 +9,17 @@ import java.util.Scanner;
  */
 public class Voter {
     String myId;
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, ClassNotFoundException {
         Socket voter = new Socket("127.0.0.1", 3333);
-        DataInputStream in = new DataInputStream(voter.getInputStream());
-        DataOutputStream out = new DataOutputStream(voter.getOutputStream());
+        ObjectInputStream in = new ObjectInputStream(voter.getInputStream());
+        ObjectOutputStream out = new ObjectOutputStream(voter.getOutputStream());
         Scanner sc = new Scanner(System.in);
         String response;
 
         System.out.println("please enter your national ID: ");
 
-        out.writeUTF("ID: " + sc.nextLine());
-        while ((response = in.readUTF()) != null) {
+        out.writeObject("ID: " + sc.nextLine());
+        while ((response = (String) in.readObject()) != null) {
             System.out.println("server: "+ response);
         }
         System.out.println(in.readByte());
