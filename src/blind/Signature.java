@@ -1,5 +1,6 @@
 package blind;
 
+import javax.crypto.Cipher;
 import java.math.BigInteger;
 import java.security.SecureRandom;
 import java.security.interfaces.RSAPublicKey;
@@ -7,11 +8,12 @@ import java.security.interfaces.RSAPublicKey;
 /**
  * Created by roya on 6/23/15.
  */
-public class BlindSignature {
+public class Signature {
     private BigInteger blindingFactor;
     private RSAPublicKey publicKey;
+    private Cipher cipher;
 
-    public BlindSignature(RSAPublicKey publicKey, byte[] seed) {
+    public Signature(RSAPublicKey publicKey, byte[] seed) {
         SecureRandom secureRandom = new SecureRandom(seed);
         int len = publicKey.getModulus().bitLength() - 1;
         do {

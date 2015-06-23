@@ -3,6 +3,7 @@ package register;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 
 /**
@@ -14,6 +15,7 @@ public class Registration extends Thread{
     private ObjectInputStream inputStream;
     private ObjectOutputStream outputStream;
     private RSAPublicKey pollingPubKey;
+    private RSAPrivateKey pollingPrivateKey;
 
     @Override
     public void start() {
