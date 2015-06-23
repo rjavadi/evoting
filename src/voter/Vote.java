@@ -1,9 +1,13 @@
 package voter;
 
+import java.io.Serializable;
+
 /**
  * Created by roya on 6/23/15.
  */
-public class Vote {
+public class Vote implements Serializable{
+    static final long serialVersionUID = 4482838265551344778L;
+
     private String candidate;
     private byte[] signature;
     private byte[] ID;

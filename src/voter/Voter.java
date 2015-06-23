@@ -1,11 +1,8 @@
 package voter;
 
-import blind.Signature;
 import checking.CheckingCenter;
 
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
+import javax.crypto.*;
 import java.io.*;
 import java.net.Socket;
 import java.security.InvalidKeyException;
@@ -41,17 +38,19 @@ public class Voter {
             voter.close();
         }
         //
-        Signature signature = new Signature(checkingPublicKey, Utils.getRandomBytes(10));
         Vote vote = new Vote(Utils.getRandomBytes(16));
         System.out.println(pollingPubKey);
         // voter is asked to enter his/her vote
-        System.out.println("please enter your vote: ");
-        // then checking center signs it
         CheckingCenter checkingCenter = new CheckingCenter();
         checkingCenter.signVote(vote);
-        vote.setCandidate(sc.nextLine());
-        readPublicKey();
+        // TODO: check for candidate being null
+        byte[] unsigned = checkingCenter.unsignVote(vote);
         readPrivateKey();
+        Utils.encryptedVote(pollingPubKey, vote);
+        Utils.readEncryptedVote(checkingPrivateKey);
+        System.out.println("please enter your vote: ");
+        // then checking center signs it
+        vote.setCandidate(sc.nextLine());
     }
 
     private static String bytes2String(byte[] bytes) {
@@ -77,7 +76,7 @@ public class Voter {
 
     private static void readPrivateKey() throws ClassNotFoundException {
         try {
-            ObjectInputStream ois = new ObjectInputStream(new FileInputStream("checkingCenterPrivateKey"));
+            ObjectInputStream ois = new ObjectInputStream(new FileInputStream("pollingCenterPrivateKey"));
             checkingPrivateKey = (RSAPrivateKey)ois.readObject();
         } catch (IOException ignored) {
             System.out.println("no such file found");
@@ -91,6 +90,25 @@ class Utils {
         byte[] bytes = new byte[count];
         new SecureRandom().nextBytes(bytes);
         return bytes;
+    }
+
+    public static void encryptedVote(RSAPublicKey pollingKey, Vote vote) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IOException, IllegalBlockSizeException {
+        Cipher cipher = Cipher.getInstance("RSA");
+        cipher.init(Cipher.ENCRYPT_MODE, pollingKey);
+        SealedObject sealedObject = new SealedObject(vote, cipher);
+        CipherOutputStream cipherOutputStream = new CipherOutputStream( new BufferedOutputStream( new FileOutputStream( "cipheredVote" ) ), cipher );
+        ObjectOutputStream outputStream = new ObjectOutputStream( cipherOutputStream );
+        outputStream.writeObject( sealedObject );
+        outputStream.close();
+    }
+
+    public static byte[] readEncryptedVote(RSAPrivateKey privateKey) throws IOException, ClassNotFoundException, NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
+        ObjectInputStream objectInputStream = new ObjectInputStream(new FileInputStream("cipheredVote"));
+        byte[] bytes = (byte[]) objectInputStream.readObject();
+        Cipher cipher = Cipher.getInstance("RSA");
+        cipher.init(Cipher.DECRYPT_MODE, privateKey);
+        // TODO: test (Vote) (cipher.dofinal(bytes))
+        return cipher.doFinal(bytes);
     }
 
 }

@@ -1,6 +1,5 @@
 package checking;
 
-import blind.Signature;
 import exception.DoubleSignatureException;
 import voter.Vote;
 
@@ -23,7 +22,6 @@ public class CheckingCenter {
 
     private RSAPublicKey checkingPublicKey;
     private RSAPrivateKey checkingPrivateKey;
-    private Signature signature;
     private Cipher cipher;
 
     public CheckingCenter() throws NoSuchPaddingException, NoSuchAlgorithmException {
@@ -35,13 +33,18 @@ public class CheckingCenter {
         }
     }
 
-    public byte[] signVote(Vote vote) throws InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
+    public void signVote(Vote vote) throws InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
         if (vote.getSignature() != null) {
             throw new DoubleSignatureException("your vote is already signed!");
         }
         cipher.init(Cipher.ENCRYPT_MODE, checkingPrivateKey);
         assert vote.getID() != null;
-        return cipher.doFinal(vote.getID());
+        vote.setSignature(cipher.doFinal(vote.getID()));
+    }
+
+    public byte[] unsignVote(Vote vote) throws InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
+        cipher.init(Cipher.DECRYPT_MODE, checkingPublicKey);
+        return cipher.doFinal(vote.getSignature());
     }
 
     private void initPollingKeys() throws ClassNotFoundException {

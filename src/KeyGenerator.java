@@ -19,9 +19,9 @@ public class KeyGenerator {
         KeyPair keyPair = kPGen.generateKeyPair();
         RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
         RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
-        ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("pollingCenterPublicKey"));
+        ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("checkingCenterPublicKey"));
         oos.writeObject(publicKey);
-        oos = new ObjectOutputStream(new FileOutputStream("pollingCenterPrivateKey"));
+        oos = new ObjectOutputStream(new FileOutputStream("checkingCenterPrivateKey"));
         oos.writeObject(privateKey);
     }
 }
