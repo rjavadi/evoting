@@ -18,13 +18,13 @@ import java.security.interfaces.RSAPublicKey;
 /**
  * Created by roya on 6/23/15.
  */
-public class CheckingCenter {
+public class VotingCenter {
 
     private RSAPublicKey checkingPublicKey;
     private RSAPrivateKey checkingPrivateKey;
     private Cipher cipher;
 
-    public CheckingCenter() throws NoSuchPaddingException, NoSuchAlgorithmException {
+    public VotingCenter() throws NoSuchPaddingException, NoSuchAlgorithmException {
         try {
             initPollingKeys();
             cipher = Cipher.getInstance("RSA");

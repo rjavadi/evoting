@@ -1,6 +1,6 @@
 package voter;
 
-import checking.CheckingCenter;
+import checking.VotingCenter;
 
 import javax.crypto.*;
 import java.io.*;
@@ -41,10 +41,10 @@ public class Voter {
         Vote vote = new Vote(Utils.getRandomBytes(16));
         System.out.println(pollingPubKey);
         // voter is asked to enter his/her vote
-        CheckingCenter checkingCenter = new CheckingCenter();
-        checkingCenter.signVote(vote);
+        VotingCenter votingCenter = new VotingCenter();
+        votingCenter.signVote(vote);
         // TODO: check for candidate being null
-        byte[] unsigned = checkingCenter.unsignVote(vote);
+        byte[] unsigned = votingCenter.unsignVote(vote);
         readPrivateKey();
         Utils.encryptedVote(pollingPubKey, vote);
         Utils.readEncryptedVote(checkingPrivateKey);

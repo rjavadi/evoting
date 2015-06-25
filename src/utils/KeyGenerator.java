@@ -1,3 +1,5 @@
+package utils;
+
 import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
 import java.io.FileOutputStream;
@@ -21,7 +23,7 @@ public class KeyGenerator {
         RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
         ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("checkingCenterPublicKey"));
         oos.writeObject(publicKey);
-        oos = new ObjectOutputStream(new FileOutputStream("checkingCenterPrivateKey"));
+        oos = new ObjectOutputStream(new FileOutputStream("checkinCenterPrivateKey"));
         oos.writeObject(privateKey);
     }
 }
