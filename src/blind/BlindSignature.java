@@ -1,6 +1,7 @@
 package blind;
 
 import sun.misc.BASE64Encoder;
+import utils.RSA;
 
 import javax.crypto.*;
 import java.io.*;
@@ -38,69 +39,29 @@ public class BlindSignature {
         return unblindedVote.toByteArray();
     }
 
-    public static void main(String[] args) throws IOException, ClassNotFoundException, NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, NoSuchProviderException, SignatureException, BadPaddingException, IllegalBlockSizeException {
+    public static KeyPair generateKey() throws NoSuchAlgorithmException {
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(1024);
-        KeyPair keyPair = keyGen.generateKeyPair();
-        Cipher signature = Cipher.getInstance("RSA");
-        signature.init(Cipher.ENCRYPT_MODE, keyPair.getPrivate());
-        BlindSignature blindSignature = new BlindSignature((RSAPublicKey)keyPair.getPublic(), new byte[] {(byte) 0x7F, (byte) 0xFF, (byte) 0x89});
-        byte[] message = "myvote".getBytes();
-        byte[] blind = blindSignature.blind(message);
-        signature.update(blind);
-        ObjectOutputStream toSign = new ObjectOutputStream(new FileOutputStream("signature"));
-        toSign.write(message);
-        encrypt(signature, new FileInputStream("signature"), keyPair.getPrivate());
-        DataInputStream signatureFile = new DataInputStream(new FileInputStream("signature"));
-        byte[] signed = new byte[128];
-        signatureFile.read(signed);
-        System.out.println("Singature:   " + new BASE64Encoder().encode(signed));
-        System.out.println("blind:   " + new BASE64Encoder().encode(blind));
+        keyGen.initialize(512);
+        return keyGen.generateKeyPair();
+    }
+
+    public static void main(String[] args) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+        KeyPair keyPair = generateKey();
+        RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
+        RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
+        RSA rsa = new RSA(publicKey.getModulus(), publicKey.getPublicExponent(), privateKey.getPrivateExponent());
+        BlindSignature blindSignature = new BlindSignature(publicKey, "a;ihg".getBytes());
+        byte[] msg = "vote".getBytes("UTF-8");
+        byte[] blind = blindSignature.blind(msg);
+        byte[] signed = rsa.sign(blind);
         byte[] unblind = blindSignature.unblind(signed);
-        Cipher cipher = Cipher.getInstance("RSA");
-        cipher.init(Cipher.ENCRYPT_MODE, keyPair.getPublic());
-        DataOutputStream objectOutputStream = new DataOutputStream(new FileOutputStream("unblind"));
-        objectOutputStream.write(unblind);
-        FileInputStream fileInputStream = new FileInputStream("unblind");
-        encrypt(cipher, fileInputStream, keyPair.getPublic());
-        FileInputStream encrypt = new FileInputStream("encrypt");
-        byte[] unblind_enc = new byte[128];
-        encrypt.read(unblind_enc);
+
+        // verification
+        byte[] signedMsg = rsa.sign(msg);
+        byte[] decrypt = rsa.decrypt(unblind, publicKey.getPublicExponent());
         System.out.println("unblind:   " + new BASE64Encoder().encode(unblind));
-        System.out.println("unblind_enc:   " + new BASE64Encoder().encode(unblind_enc));
-        decrypt(cipher, encrypt, keyPair.getPrivate());
-        fileInputStream = new FileInputStream("decrypt");
-        byte[] decrypt = new byte[128];
-        encrypt.read(decrypt);
-        System.out.println("unblind_enc_Dec:   " + new BASE64Encoder().encode(decrypt));
+        System.out.println("decrypt:   " + new BASE64Encoder().encode(decrypt));
 
-//        BigInteger unblindInt = new BigInteger(unblind);
-//        BigInteger modPow = unblindInt.modPow(((RSAPublicKey) keyPair.getPublic()).getPublicExponent(), ((RSAPublicKey) keyPair.getPublic()).getModulus());
-//        System.out.println(new BASE64Encoder().encode(modPow.toByteArray()));
-    }
-
-    public static void encrypt(Cipher cipher, InputStream inputStream,Key publicKey) throws IOException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
-        FileOutputStream outputStream = new FileOutputStream("encrypt");
-        byte[] block = new byte[32];
-        int i;
-        cipher.init(Cipher.ENCRYPT_MODE, publicKey);
-        while ((i = inputStream.read(block)) != -1) {
-            byte[] inputfile = cipher.doFinal(block);
-            outputStream.write(inputfile);
-        }
-        outputStream.close();
-    }
-
-    public static void decrypt(Cipher cipher, InputStream inputStream,Key privateKey) throws IOException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
-        FileOutputStream outputStream = new FileOutputStream("decrypt");
-        byte[] block = new byte[32];
-        int i;
-        cipher.init(Cipher.DECRYPT_MODE, privateKey);
-        while ((i = inputStream.read(block)) != -1) {
-            byte[] inputfile = cipher.doFinal(block);
-            outputStream.write(inputfile);
-        }
-        outputStream.close();
     }
 
     public BigInteger getBlindingFactor() {
