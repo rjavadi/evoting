@@ -1,8 +1,12 @@
 package utils;
 
+import sun.misc.BASE64Decoder;
+import sun.misc.BASE64Encoder;
+
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
 import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.*;
 import java.net.Socket;
 import java.security.Key;
@@ -65,6 +69,34 @@ public class CrypUtils {
 
         return digest.digest();
 
+    }
+
+    public static String encryptAES(String Data, Key key) throws Exception {
+        Cipher c = Cipher.getInstance("AES");
+        c.init(Cipher.ENCRYPT_MODE, key);
+        byte[] encVal = c.doFinal(Data.getBytes());
+        String encryptedValue = new BASE64Encoder().encode(encVal);
+        return encryptedValue;
+    }
+
+    public static String decryptAES(String encryptedData, Key key) throws Exception {
+        Cipher c = Cipher.getInstance("AES");
+        c.init(Cipher.DECRYPT_MODE, key);
+        byte[] decodedValue = new BASE64Decoder().decodeBuffer(encryptedData);
+        byte[] decValue = c.doFinal(decodedValue);
+        String decryptedValue = new String(decValue);
+        return decryptedValue;
+    }
+    public static Key generateAESKey(byte[] keyValue) throws Exception {
+        Key key = new SecretKeySpec(keyValue, "AES");
+        return key;
+    }
+
+    public static void main(String[] args) throws Exception {
+        byte[] value = "thebestsecretkey".getBytes();
+        Key key = generateAESKey(value);
+        String roya = encryptAES("roya", key);
+        System.out.println(decryptAES(roya, key));
     }
 
 }

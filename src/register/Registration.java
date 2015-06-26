@@ -1,12 +1,16 @@
 package register;
 
+import com.sun.crypto.provider.AESKeyGenerator;
+import utils.CrypUtils;
 import voter.Ballot;
 
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.Key;
 import java.security.SecureRandom;
 import java.security.interfaces.RSAPublicKey;
+import java.util.Date;
 
 /**
  * Created by roya on 6/20/15.
@@ -18,6 +22,22 @@ public class Registration extends Thread{
     private ObjectOutputStream outputStream;
     private RSAPublicKey votingPublicKey;
     private RSAPublicKey checkingPublicKey;
+    private DataOutputStream registrationLog;
+    private Key registrationMasterKey;
+
+
+    public Registration() {
+        try {
+            registrationLog = new DataOutputStream(new FileOutputStream("registration_log.txt"));
+            registrationMasterKey = CrypUtils.generateAESKey("tryjnbvfy78iol,m".getBytes());
+            ObjectOutputStream keyFile = new ObjectOutputStream(new FileOutputStream("reg_key"));
+            keyFile.writeObject(registrationMasterKey);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     @Override
     public void start() {
@@ -28,7 +48,10 @@ public class Registration extends Thread{
                 System.out.println("voter " + voter.toString() + " connected");
                 outputStream = new ObjectOutputStream(voter.getOutputStream());
                 inputStream = new ObjectInputStream(voter.getInputStream());
-                System.out.println((String)inputStream.readObject());
+                String voterId = (String) inputStream.readObject();
+                String line = new Date().toString() + " " + voterId + " connected to Registration Server";
+                registrationLog.writeUTF(CrypUtils.encryptAES(line, registrationMasterKey));
+                System.out.println(voterId);
                 readPublicKeys();
                 outputStream.writeObject(votingPublicKey);
                 outputStream.writeObject(checkingPublicKey);
@@ -36,9 +59,7 @@ public class Registration extends Thread{
                 Ballot ballot = new Ballot(getRandomBytes(13));
                 outputStream.writeObject(ballot);
             }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (ClassNotFoundException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
