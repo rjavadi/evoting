@@ -1,9 +1,11 @@
 package register;
 
+import voter.Ballot;
+
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.security.interfaces.RSAPrivateKey;
+import java.security.SecureRandom;
 import java.security.interfaces.RSAPublicKey;
 
 /**
@@ -14,8 +16,8 @@ public class Registration extends Thread{
     private ServerSocket registaration;
     private ObjectInputStream inputStream;
     private ObjectOutputStream outputStream;
-    private RSAPublicKey pollingPubKey;
-    private RSAPrivateKey pollingPrivateKey;
+    private RSAPublicKey votingPublicKey;
+    private RSAPublicKey checkingPublicKey;
 
     @Override
     public void start() {
@@ -27,12 +29,12 @@ public class Registration extends Thread{
                 outputStream = new ObjectOutputStream(voter.getOutputStream());
                 inputStream = new ObjectInputStream(voter.getInputStream());
                 System.out.println((String)inputStream.readObject());
-                readPollingPubKey();
-//                for (int i = 0; i < 10; i++) {
-//                    outputStream.writeObject("hello voter!");
-//                }
-//                voter.close();
-                outputStream.writeObject(pollingPubKey);
+                readPublicKeys();
+                outputStream.writeObject(votingPublicKey);
+                outputStream.writeObject(checkingPublicKey);
+                // TODO: verify user for voting
+                Ballot ballot = new Ballot(getRandomBytes(13));
+                outputStream.writeObject(ballot);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -41,10 +43,18 @@ public class Registration extends Thread{
         }
     }
 
-    private void readPollingPubKey() throws ClassNotFoundException {
+    public static byte[] getRandomBytes(int count) {
+        byte[] bytes = new byte[count];
+        new SecureRandom().nextBytes(bytes);
+        return bytes;
+    }
+
+    private void readPublicKeys() throws ClassNotFoundException {
         try {
             ObjectInputStream ois = new ObjectInputStream(new FileInputStream("pollingCenterPublicKey"));
-            pollingPubKey = (RSAPublicKey)ois.readObject();
+            votingPublicKey = (RSAPublicKey)ois.readObject();
+            ois = new ObjectInputStream(new FileInputStream("checkingCenterPublicKey"));
+            checkingPublicKey = (RSAPublicKey) ois.readObject();
         } catch (IOException ignored) {
             System.out.println("no such file found");
             ignored.printStackTrace();

@@ -5,14 +5,15 @@ import java.io.Serializable;
 /**
  * Created by roya on 6/23/15.
  */
-public class Vote implements Serializable{
+public class Ballot implements Serializable{
     static final long serialVersionUID = 4482838265551344778L;
 
     private String candidate;
     private byte[] signature;
     private byte[] ID;
+    private byte[] blindedCandidate;
 
-    public Vote(byte[] ID) {
+    public Ballot(byte[] ID) {
         this.ID = ID;
     }
 
@@ -38,5 +39,13 @@ public class Vote implements Serializable{
 
     public void setID(byte[] ID) {
         this.ID = ID;
+    }
+
+    public byte[] getBlindedCandidate() {
+        return blindedCandidate;
+    }
+
+    public void setBlindedCandidate(byte[] blindedCandidate) {
+        this.blindedCandidate = blindedCandidate;
     }
 }
