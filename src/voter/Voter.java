@@ -2,6 +2,7 @@ package voter;
 
 import blind.BlindSignature;
 import register.Registration;
+import sendedObject.SendedVote;
 import utils.CrypUtils;
 import utils.RSA;
 
@@ -10,8 +11,11 @@ import java.io.*;
 import java.net.Socket;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.sql.Timestamp;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Scanner;
 
 /**
@@ -33,18 +37,17 @@ public class Voter {
         try {
             voterToRegistration = new Socket("127.0.0.1", 3333);
             voterToVotingCenter = new Socket("127.0.0.1", 4444);
-            voterToCheckingCenter = new Socket("127.0.0.1", 5555);
             inFromReg = new ObjectInputStream(voterToRegistration.getInputStream());
             outToReg = new ObjectOutputStream(voterToRegistration.getOutputStream());
             inFromVC = new ObjectInputStream(voterToVotingCenter.getInputStream());
             outToVC = new ObjectOutputStream(voterToVotingCenter.getOutputStream());
-            outToCC = new DataOutputStream(voterToCheckingCenter.getOutputStream());
+
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    public static void main(String[] args) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException, ClassNotFoundException {
+    public static void main(String[] args) throws Exception {
         Voter voter = new Voter();
         Scanner sc = new Scanner(System.in);
         System.out.println("please enter your national ID: ");
@@ -68,13 +71,41 @@ public class Voter {
         ballot.setBlindedCandidate(blindSignature.blind(vote.getBytes("UTF-8")));
         voter.outToVC.writeObject(ballot);
         Ballot signedBallot = (Ballot) voter.inFromVC.readObject();
+        final byte[] unblinded = blindSignature.unblind(signedBallot.getBlindedCandidate());
+        signedBallot.setSignature(unblinded);
         assert Arrays.equals(signedBallot.getID(), ballot.getID());
         // sets the candidate name
         signedBallot.setCandidate(vote);
         System.out.println(signedBallot);
-        RSA rsa = new RSA(checkingPubKey.getModulus(), checkingPubKey.getPublicExponent(), null);
-        byte[] encryptedBallot = rsa.encrypt(CrypUtils.serialize(signedBallot));
-        voter.outToCC.write(encryptedBallot);
+
+
+
+        RSAPrivateKey voterPrivateKey = (RSAPrivateKey) CrypUtils.readKey("voterPrivateKey");//should initialize
+        RSAPublicKey voterPublicKey = (RSAPublicKey) CrypUtils.readKey("voterPublicKey");//should initialize
+
+        ///mona//
+        RSA rsa = new RSA(voterPrivateKey.getModulus(), voterPublicKey.getPublicExponent(), voterPrivateKey.getPrivateExponent());
+        byte[] m = rsa.encrypt(CrypUtils.serialize(vote));
+        byte[] s = new byte[0]; /// unblind !!!!//////////////////////////////////////////////
+
+
+        Timestamp timestamp = new Timestamp(Calendar.getInstance().getTime().getTime());
+        byte[] hashVote = CrypUtils.hash(m);
+        // they should be concat then sign then encrypt so maybe should be String
+        SendedVote sVote = new SendedVote(m, s, hashVote, timestamp);// m encypted vote by public votingCenter , s unblinded message
+        Socket voter_checking = new Socket("127.0.0.1", 2222);
+        ObjectInputStream in_VC = new ObjectInputStream(voter_checking.getInputStream());
+        ObjectOutputStream out_VC = new ObjectOutputStream(voter_checking.getOutputStream());
+
+
+        //encrypt sVote
+        byte[] signedSVote = rsa.sign(CrypUtils.serialize(sVote));
+
+        RSAPublicKey checkingPublicKey = (RSAPublicKey) CrypUtils.readKey("checkingCenterPublicKey");//should initialize
+        RSA  rsaChecking = new RSA(checkingPublicKey.getModulus(), checkingPublicKey.getPublicExponent());
+
+        out_VC.writeObject(rsaChecking.encrypt(signedSVote));
+
     }
 
 

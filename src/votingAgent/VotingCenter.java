@@ -1,5 +1,6 @@
 package votingAgent;
 
+import utils.CrypUtils;
 import utils.RSA;
 import voter.Ballot;
 
@@ -28,11 +29,11 @@ public class VotingCenter extends Thread{
     private RSAPrivateKey votingPrivateKey;
 
     public VotingCenter() {
-        try {
-            initPollingKeys();
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
+//        try {
+//            initPollingKeys();
+//        } catch (ClassNotFoundException e) {
+//            e.printStackTrace();
+//        }
     }
 
     @Override
@@ -83,5 +84,17 @@ public class VotingCenter extends Thread{
     public static void main(String[] args) {
         VotingCenter votingCenter = new VotingCenter();
         votingCenter.start();
+    }
+
+    public void sendPrivateKeyCounting() throws IOException, ClassNotFoundException {
+        Socket voter = new Socket("127.0.0.1", 5555);
+        ObjectInputStream in = new ObjectInputStream(voter.getInputStream());
+        ObjectOutputStream out = new ObjectOutputStream(voter.getOutputStream());
+
+
+        RSAPublicKey countingPublicKey = (RSAPublicKey) CrypUtils.readKey("countingCenterPublicKey");//should initialize
+        RSA rsaCounting = new RSA(countingPublicKey.getModulus(), countingPublicKey.getPublicExponent());
+        out.writeObject(rsaCounting.encrypt(CrypUtils.serialize(votingPrivateKey)));
+
     }
 }

@@ -16,6 +16,10 @@ public class RSA {
         this.d = d;
     }
 
+    public RSA(BigInteger n, BigInteger e){
+        this.n = n;
+        this.e = e;
+    }
     public byte[] encrypt(byte[] plain) {
         BigInteger number = new BigInteger(plain);
         return number.modPow(e, n).toByteArray();

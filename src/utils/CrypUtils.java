@@ -2,12 +2,10 @@ package utils;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
-import javax.crypto.spec.IvParameterSpec;
 import java.io.*;
 import java.net.Socket;
 import java.security.Key;
 import java.security.MessageDigest;
-import java.security.interfaces.RSAPublicKey;
 import java.util.Arrays;
 
 /**
@@ -54,14 +52,31 @@ public class CrypUtils {
 //        }
     }
 
-    public static byte[] hash(String x) throws Exception {
+
+    /////////added//////////////
+    public static Key readKey(String nameFile) throws IOException, ClassNotFoundException {
+        ObjectInputStream ois = new ObjectInputStream(new FileInputStream(nameFile));
+        return (Key)ois.readObject();
+
+    }
+
+    //verify content
+    public static boolean checkHash(byte[] x,byte[] hashed ) throws Exception {
+        if(Arrays.equals(hash(x), hashed)){
+            return  true;
+        }
+        else
+            return false;
+    }
+    /////////////////////////////////
+    public static byte[] hash(byte[] x) throws Exception {
         MessageDigest digest = null;
 
         digest = MessageDigest.getInstance("SHA-1");
 
         digest.reset();
 
-        digest.update(x.getBytes("UTF-8"));
+        digest.update(x);
 
         return digest.digest();
 

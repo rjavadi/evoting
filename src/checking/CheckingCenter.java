@@ -1,74 +1,97 @@
 package checking;
 
+import sendedObject.SendedCounting;
+import sendedObject.SendedVote;
+import utils.CrypUtils;
 import utils.RSA;
-import voter.Ballot;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.sql.Timestamp;
+import java.util.Arrays;
+import java.util.Calendar;
 
 /**
- * Created by roya on 6/26/15.
- *
- * TODO: Mona : complete the voting process.
+ * Created by Mona on 6/26/2015.
  */
-public class CheckingCenter extends Thread{
-
-    private ServerSocket checkingCenter;
-    private DataInputStream inputStreamFromVoter;
-    private ObjectOutputStream outputStreamToVoter;
-    private RSAPublicKey checkingPublicKey;
-    private RSAPrivateKey checkingPrivateKey;
+public class CheckingCenter {
 
 
-    public CheckingCenter() {
-        try {
-            initKeys();
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
+    public static RSAPublicKey checkingPublicKey;
+    public static RSAPrivateKey checkingPrivateKey;
+
+    public static RSA rsaChecking;
+
+    public static void main(String[] args) throws Exception{
+
+        checkingPublicKey = (RSAPublicKey) CrypUtils.readKey("checkingCenterPublicKey");
+        checkingPrivateKey = (RSAPrivateKey) CrypUtils.readKey("checkingCenterPrivateKey");
+
+
+        rsaChecking = new RSA(checkingPublicKey.getModulus(), checkingPublicKey.getPublicExponent(), checkingPrivateKey.getPrivateExponent());
+
+        talkToVoter();
+
+
     }
 
-    @Override
-    public synchronized void start() {
-        try {
-            checkingCenter = new ServerSocket(5555);
-            while (true) {
-                Socket voter = checkingCenter.accept();
-                System.out.println("voter " + voter + " connected");
-                outputStreamToVoter = new ObjectOutputStream(voter.getOutputStream());
-                inputStreamFromVoter = new DataInputStream(voter.getInputStream());
-                // TODO: complete
-                // reading ballot
-                byte[] encryptedBallot = new byte[128];
-                inputStreamFromVoter.read(encryptedBallot);
-                RSA rsa = new RSA(checkingPublicKey.getModulus(), checkingPublicKey.getPublicExponent(), checkingPrivateKey.getPrivateExponent());
-                // decrypting ballot
-                byte[] bytes = rsa.decrypt(encryptedBallot);
-                // serialize bytes to Ballot
-                System.out.println("hello");
+
+
+    public static void talkToVoter() throws Exception {
+
+        ServerSocket checkingCounter;
+        ObjectInputStream inputStream;
+        ObjectOutputStream outputStream;
+        checkingCounter = new ServerSocket(2222);
+
+        try{
+            while(true) {
+                Socket checkingVoter = checkingCounter.accept();
+                outputStream = new ObjectOutputStream(checkingVoter.getOutputStream());
+                inputStream = new ObjectInputStream(checkingVoter.getInputStream());
+                byte[] encryptSVote = CrypUtils.serialize(inputStream.readObject());
+
+                RSAPublicKey votingPublicKey = (RSAPublicKey) CrypUtils.readKey("votingCenterPublicKey");//should initialize
+                RSA rsaVoting = new RSA(votingPublicKey.getModulus(), votingPublicKey.getPublicExponent());
+
+                byte[] signedSVote = rsaChecking.decrypt(encryptSVote);
+                SendedVote sVote = (SendedVote) CrypUtils.deserialize(rsaVoting.decrypt(encryptSVote, checkingPrivateKey.getPrivateExponent()));
+
+                if (CrypUtils.checkHash(sVote.getM(), sVote.getHashVote())){
+                    System.out.println("hashed corrected! ");
+
+                    if(Arrays.equals(rsaVoting.encrypt(sVote.getS()), sVote.getM())){
+                        ///// send to countingCenter
+                        Socket checking_counting = new Socket("127.0.0.1", 1111);
+                        ObjectInputStream in_CC = new ObjectInputStream(checking_counting.getInputStream());
+                        ObjectOutputStream out_CC = new ObjectOutputStream(checking_counting.getOutputStream());
+
+                        Timestamp timestamp = new Timestamp(Calendar.getInstance().getTime().getTime());
+                        SendedCounting sc = new SendedCounting(sVote.getM(), timestamp);
+
+                        byte[] signedSendedCounting = rsaChecking.sign(CrypUtils.serialize(sc));
+
+                        RSAPublicKey countingPublicKey = (RSAPublicKey) CrypUtils.readKey("countingCenterPublicKey");//should initialize
+                        RSA rsaCounting = new RSA(countingPublicKey.getModulus(), countingPublicKey.getPublicExponent());
+                        out_CC.writeObject(rsaCounting.encrypt(signedSendedCounting));
+
+
+
+                    }
+                }
+                else{
+                    System.out.println("the message is not correct ");
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
-        }
-    }
-
-    public static void main(String[] args) {
-        CheckingCenter cc = new CheckingCenter();
-        cc.start();
-    }
-
-    private void initKeys() throws ClassNotFoundException {
-        try {
-            ObjectInputStream ois = new ObjectInputStream(new FileInputStream("checkingCenterPublicKey"));
-            checkingPublicKey = (RSAPublicKey)ois.readObject();
-            ois = new ObjectInputStream(new FileInputStream("checkingCenterPrivateKey"));
-            checkingPrivateKey = (RSAPrivateKey) ois.readObject();
-        } catch (IOException ignored) {
-            System.out.println("no such file found");
-            ignored.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
         }
     }
 }
